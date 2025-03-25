@@ -11,6 +11,10 @@ Ce projet vise à prédire la gravité des accidents de la route en France en ut
   - numpy
   - requests
   - beautifulsoup4
+  - pytest
+  - fastapi
+  - uvicorn
+  - pyyaml
 
 ## Installation
 1. Clonez le dépôt
@@ -19,7 +23,8 @@ git clone https://github.com/mclpfr/mlops-road-accidents.git
 ```
 2. Créez un environnement virtuel
 ```bash
-bash scripts/setup_env.sh
+python3.10 -m venv venv
+source venv/bin/activate
 ```
 3. Installez les dépendances
 ```bash
