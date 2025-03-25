@@ -19,7 +19,7 @@ git clone https://github.com/mclpfr/mlops-road-accidents.git
 ```
 2. Créez un environnement virtuel
 ```bash
-bash scritps/setup_env.sh
+bash scripts/setup_env.sh
 ```
 3. Installez les dépendances
 ```bash
