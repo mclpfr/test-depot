@@ -1,0 +1,67 @@
+name: Test of the ML Pipeline for Road Accidents
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-pipeline:
+    name: Tester le Pipeline
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Clone the repository
+      - name: Cloner le dépôt
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Configurer Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      # Step 3: Install dependencies
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests beautifulsoup4 pyyaml scikit-learn joblib
+
+      # Step 4: Run the data download script
+      - name: Exécuter download_accident_data.py
+        run: |
+          python download_accident_data.py
+          # Check if the raw data file was created
+          if [ ! -f "data/raw/accidents_2023.csv" ]; then
+            echo "Error: The file accidents_2023.csv was not created."
+            exit 1
+          fi
+
+      # Step 5: Run the data preparation script
+      - name: Exécuter prepare_data.py
+        run: |
+          python prepare_data.py
+          # Check if the prepared data file was created
+          if [ ! -f "data/processed/prepared_accidents_2023.csv" ]; then
+            echo "Error: The file prepared_accidents_2023.csv was not created."
+            exit 1
+          fi
+
+      # Step 6: Run the model training script
+      - name: Exécuter train_model.py
+        run: |
+          python train_model.py
+          # Check if the model file was saved
+          if [ ! -f "models/rf_model_2023.joblib" ]; then
+            echo "Error: The file rf_model_2023.joblib was not created."
+            exit 1
+          fi
+
+      # Step 7: Verify outputs
+      - name: Vérifier les fichiers générés
+        run: |
+          echo "Checking generated files:"
+          ls -l data/raw/accidents_2023.csv
+          ls -l data/processed/prepared_accidents_2023.csv
+          ls -l models/rf_model_2023.joblib
+          echo "All expected files were successfully generated."
