@@ -24,12 +24,6 @@ def prepare_data(config_path="config.yaml"):
     # Handle missing values by filling with the mode of each column
     data.fillna(data.mode().iloc[0], inplace=True)
 
-    # Binarize the 'grav' column:
-    # Original values:
-    # 1: Unharmed (Indemne), 2: Light injury (Blessé léger), 3: Serious injury (Blessé grave), 4: Fatal (Tué)
-    # New mapping:
-    # 0: "Not Serious" (Pas Grave) for values 3 and 4 (serious injury or fatal)
-    # 1: "Serious" (Grave) for values 1 and 2 (unharmed or light injury)
     data['grav'] = data['grav'].apply(lambda x: 0 if x in [3, 4] else 1)
 
     # Select numerical columns for normalization (excluding 'grav' and non-numerical columns)
