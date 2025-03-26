@@ -1,14 +1,17 @@
 name: Test of the ML Pipeline for Road Accidents
 
 on:
-  pull_request:
+  push:  
     branches:
       - main
-  workflow_dispatch:
+  pull_request:  
+    branches:
+      - main
+  workflow_dispatch:  
 
 jobs:
   test-pipeline:
-    name: Test pipeline
+    name: Test Pipeline
     runs-on: ubuntu-latest
 
     steps:
@@ -29,9 +32,9 @@ jobs:
           pip install pandas requests beautifulsoup4 pyyaml scikit-learn joblib
 
       # Step 4: Run the data download script
-      - name: Run the data download script
+      - name: Run download_accident_data.py
         run: |
-          python download_accident_data.py
+          python src/extract_data.py
           # Check if the raw data file was created
           if [ ! -f "data/raw/accidents_2023.csv" ]; then
             echo "Error: The file accidents_2023.csv was not created."
@@ -39,9 +42,9 @@ jobs:
           fi
 
       # Step 5: Run the data preparation script
-      - name: Run the data preparation script
+      - name: Run prepare_data.py
         run: |
-          python prepare_data.py
+          python src/prepare_data.py
           # Check if the prepared data file was created
           if [ ! -f "data/processed/prepared_accidents_2023.csv" ]; then
             echo "Error: The file prepared_accidents_2023.csv was not created."
@@ -49,9 +52,9 @@ jobs:
           fi
 
       # Step 6: Run the model training script
-      - name: Run the model training script
+      - name: Run train_model.py
         run: |
-          python train_model.py
+          python src/train_model.py
           # Check if the model file was saved
           if [ ! -f "models/rf_model_2023.joblib" ]; then
             echo "Error: The file rf_model_2023.joblib was not created."
@@ -59,7 +62,7 @@ jobs:
           fi
 
       # Step 7: Verify outputs
-      - name: Verify outputs
+      - name: Verify generated files
         run: |
           echo "Checking generated files:"
           ls -l data/raw/accidents_2023.csv
