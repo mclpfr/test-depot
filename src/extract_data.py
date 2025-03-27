@@ -41,42 +41,33 @@ def download_accident_data(config_path="config.yaml"):
         print(f"No files found for the year {year}! Please verify the page and file names.")
         return
 
-    # Create a directory to store processed files
+    # Create a directory to store all files
     output_dir = "data/raw"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Temporary directory to store individual files before merging
-    temp_dir = "data/temp"
-    os.makedirs(temp_dir, exist_ok=True)
-
-    # Download each CSV file to the temporary directory
+    # Download each CSV file directly to the output directory
     for file_name, csv_link in csv_links.items():
-        temp_file_path = os.path.join(temp_dir, file_name)
+        file_path = os.path.join(output_dir, file_name)
         with requests.get(csv_link, stream=True) as r:
             r.raise_for_status()  # Ensure the request was successful
-            with open(temp_file_path, 'wb') as f:
+            with open(file_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):  # Download in chunks to handle large files
                     f.write(chunk)
 
-    # Load and merge the downloaded CSV files
-    usagers = pd.read_csv(os.path.join(temp_dir, f'usagers-{year}.csv'), sep=";", low_memory=False)
-    vehicules = pd.read_csv(os.path.join(temp_dir, f'vehicules-{year}.csv'), sep=";", low_memory=False)
-    lieux = pd.read_csv(os.path.join(temp_dir, f'lieux-{year}.csv'), sep=";", low_memory=False)
-    caract = pd.read_csv(os.path.join(temp_dir, f'caract-{year}.csv'), sep=";", low_memory=False)
+    # Load the downloaded CSV files from the output directory
+    usagers = pd.read_csv(os.path.join(output_dir, f'usagers-{year}.csv'), sep=";", low_memory=False)
+    vehicules = pd.read_csv(os.path.join(output_dir, f'vehicules-{year}.csv'), sep=";", low_memory=False)
+    lieux = pd.read_csv(os.path.join(output_dir, f'lieux-{year}.csv'), sep=";", low_memory=False)
+    caract = pd.read_csv(os.path.join(output_dir, f'caract-{year}.csv'), sep=";", low_memory=False)
 
     # Merge the datasets on the 'Num_Acc' column
     merged_data = caract.merge(usagers, on="Num_Acc").merge(vehicules, on="Num_Acc").merge(lieux, on="Num_Acc")
 
-    # Save the merged data to the specified path
+    # Save the merged data to the output directory
     output_path = os.path.join(output_dir, f'accidents_{year}.csv')
     merged_data.to_csv(output_path, index=False)
 
-    # Clean up: remove temporary directory and files
-    for file_name in files_to_download:
-        os.remove(os.path.join(temp_dir, file_name))
-    os.rmdir(temp_dir)
-
-    print(f'Download and merge completed: CSV file for {year} is stored in "{output_path}".')
+    print(f'Download and merge completed: All CSV files for {year} are stored in "{output_dir}".')
 
 # Execute the function
 if __name__ == "__main__":
