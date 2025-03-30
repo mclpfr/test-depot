@@ -27,7 +27,7 @@ async def predict(file: UploadFile = File()):
         available_features = [col for col in features if col in df.columns]
         if not available_features:
             raise ValueError("None of the selected features are available in the dataset.")
-
+        
         # Prepare features (X) and target (y)
         X = pd.get_dummies(df[available_features], drop_first=True)  # Convert categorical variables to dummy variables
         y = df[target]
@@ -38,5 +38,5 @@ async def predict(file: UploadFile = File()):
         # Classification report
         return JSONResponse({"classification report": classification_report(y, y_pred)})
     
-    except Exception as e:
+    except ImportError as e:
         return JSONResponse({'error': str(e)}, status_code=500)
