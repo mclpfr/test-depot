@@ -1,16 +1,45 @@
-from fastapi import FastAPI
-from joblib import load
-from pydantic import BaseModel
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
+from sklearn.metrics import classification_report
+import joblib
+import pandas as pd
+import io
 
-api = FastAPI()
+# Initialiser l'application FastAPI
+app = FastAPI()
 
-class PredictionResponse(BaseModel):
-    prediction: int
+# Charger le modèle entraîné
+model = joblib.load("../models/rf_model_2023.joblib")
 
-# Charger le modèle
-model = load("../models/rf_model_2023.joblib")
-
-@app.post("/predict", response_model=PredictionResponse)
-def predict():
-    predicted_model = model.predict(input_data)
-    return PredictionResponse(prediction=predicted_model)
+# Endpoint pour faire des prédictions
+@app.post("/predict")
+async def predict(file: UploadFile = File()):
+    try:
+        # Lire le fichier CSV avec pandas
+        contents = await file.read()
+        df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
+        
+        # Select relevant features
+        features = ["catu", "sexe", "trajet", "catr", "circ", "vosp", "prof", "plan", "surf", "situ", "lum", "atm", "col"]
+        target = "grav"  # Binary target column (0: grave, 1: not grave)
+        
+        # Ensure all selected features exist in the dataset
+        available_features = [col for col in features if col in df.columns]
+        if not available_features:
+            raise ValueError("None of the selected features are available in the dataset.")
+    
+        # Prepare features (X) and target (y)
+        X = pd.get_dummies(df[available_features], drop_first=True)  # Convert categorical variables to dummy variables
+        y = df[target]
+        
+        # Faire les prédictions avec le modèle
+        y_pred = model.predict(X)
+        
+        # Classification report
+        return JSONResponse({"classification report": classification_report(y, y_pred)})
+        
+        # Retourner les prédictions au format JSON
+        #return JSONResponse({"prédictions": y_pred.tolist()})
+    
+    except Exception as e:
+        return JSONResponse({'error': str(e)}, status_code=500)
