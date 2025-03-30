@@ -15,6 +15,7 @@ Ce projet vise à prédire la gravité des accidents de la route en France en ut
   - fastapi
   - uvicorn
   - pyyaml
+  - python-multipart
 
 ## Installation
 1. Clonez le dépôt
