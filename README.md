@@ -46,3 +46,16 @@ python src/prepare_data.py
 ### Entraînement du Modèle
 ```bash
 python src/train_model.py
+```
+
+### Lancement API
+```bash
+cd src
+uvicorn api:app --reload
+```
+
+### Lancement de tests unitaires
+```bash
+cd tests
+pytest tests.py
+```
