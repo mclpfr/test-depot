@@ -37,9 +37,6 @@ async def predict(file: UploadFile = File()):
         
         # Classification report
         return JSONResponse({"classification report": classification_report(y, y_pred)})
-        
-        # Retourner les prédictions au format JSON
-        #return JSONResponse({"prédictions": y_pred.tolist()})
-    
+
     except Exception as e:
         return JSONResponse({'error': str(e)}, status_code=500)
