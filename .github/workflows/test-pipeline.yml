@@ -68,8 +68,8 @@ jobs:
 
       # Step 8: Run API
       - name: Run api.py
+        working-directory: ./src
         run: |
-          cd src
           uvicorn api:app --reload
 
       # Step 9: Verify outputs
