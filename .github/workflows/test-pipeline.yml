@@ -65,7 +65,7 @@ jobs:
       - name: Run tests.py
         working-directory: ./tests
         run: |
-          pytest
+          pytest tests.py
 
       # Step 8: Run API
       - name: Run api.py
