@@ -61,7 +61,19 @@ jobs:
             exit 1
           fi
 
-      # Step 7: Verify outputs
+      # Step 7: Run the tests
+      - name: Run tests.py
+        run: |
+          cd tests
+          pytest
+
+      # Step 8: Run API
+      - name: Run api.py
+        run: |
+          cd src
+          uvicorn api:app --reload
+
+      # Step 9: Verify outputs
       - name: Verify generated files
         run: |
           echo "Checking generated files:"
