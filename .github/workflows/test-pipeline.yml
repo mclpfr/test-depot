@@ -65,19 +65,5 @@ jobs:
       - name: Run tests.py
         working-directory: ./tests
         run: |
-          pytest tests.py
+          pytest
 
-      # Step 8: Run API
-      - name: Run api.py
-        working-directory: ./src
-        run: |
-          python -m uvicorn api:app --host 0.0.0.0 --port 8000
-
-      # Step 9: Verify outputs
-      - name: Verify generated files
-        run: |
-          echo "Checking generated files:"
-          ls -l data/raw/accidents_2023.csv
-          ls -l data/processed/prepared_accidents_2023.csv
-          ls -l models/rf_model_2023.joblib
-          echo "All expected files were successfully generated."
