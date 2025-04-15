@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas requests beautifulsoup4 pyyaml scikit-learn joblib pytest fastapi uvicorn python-multipart
+          pip install pandas requests beautifulsoup4 pyyaml scikit-learn joblib pytest fastapi uvicorn python-multipart mlflow
 
       # Step 4: Run the extract data script
       - name: Run extract_data.py
