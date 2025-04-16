@@ -81,5 +81,29 @@ services:
       train_model:
         condition: service_started
 
+  auto_dvc:
+    build:
+      context: .
+      dockerfile: src/auto_dvc/Dockerfile
+    container_name: auto_dvc_service
+    command: sh -c "while [ ! -f /app/models/rf_model_2023.joblib ]; do sleep 2; done; python auto_dvc.py"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./.dvc:/app/.dvc
+      - ./.dvcignore:/app/.dvcignore
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./dvc.lock:/app/dvc.lock
+      - ./config.yaml:/app/config.yaml
+      - ./src:/app/src
+      - ./.git:/app/.git
+    working_dir: /app
+    depends_on:
+      - extract_data
+      - prepare_data
+      - train_model
+      - postgres
+      - data_import
+
 volumes:
   postgres_data:

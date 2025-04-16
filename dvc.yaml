@@ -1,6 +1,6 @@
 stages:
   extract:
-    cmd: python src/extract_data.py
+    cmd: python src/extract_data/extract_data.py
     deps:
     - src/extract_data/extract_data.py
     - config.yaml
