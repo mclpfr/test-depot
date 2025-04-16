@@ -81,5 +81,22 @@ services:
       train_model:
         condition: service_started
 
+  auto_dvc:
+    build:
+      context: .
+      dockerfile: src/auto_dvc/Dockerfile
+    container_name: auto_dvc_service
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./.dvc:/app/.dvc
+      - ./.dvcignore:/app/.dvcignore
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./dvc.lock:/app/dvc.lock
+      - ./config.yaml:/app/config.yaml
+      - ./.git:/app/.git
+    working_dir: /app
+    tty: true
+
 volumes:
   postgres_data:
