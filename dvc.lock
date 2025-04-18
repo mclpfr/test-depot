@@ -34,8 +34,8 @@ stages:
     outs:
     - path: data/processed/prepared_accidents_2023.csv
       hash: md5
-      md5: 28f31dfa4cc96a4e91b5280c763c9ce7
-      size: 73343741
+      md5: 01194ef8d5ea89d37bbc5312f45bfe57
+      size: 66922106
   models:
     cmd: python src/train_model/train_model.py
     deps:
@@ -45,14 +45,14 @@ stages:
       size: 457
     - path: data/processed/prepared_accidents_2023.csv
       hash: md5
-      md5: 28f31dfa4cc96a4e91b5280c763c9ce7
-      size: 73343741
+      md5: 01194ef8d5ea89d37bbc5312f45bfe57
+      size: 66922106
     - path: src/train_model/train_model.py
       hash: md5
-      md5: 3924aee0008a0a8ed0f4c8bf9acdd5e4
-      size: 6864
+      md5: 0ea28fa72d80c818cfd8d400b6e910b8
+      size: 11822
     outs:
     - path: models/rf_model_2023.joblib
       hash: md5
-      md5: 7a3258f880cf1b5712fec71c783d3f92
-      size: 89483017
+      md5: b89452d14253364434ea71951569a655
+      size: 157549097

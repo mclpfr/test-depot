@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: src/extract_data/Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
     container_name: extract_data_service
     command: python extract_data.py
     volumes:
@@ -16,6 +19,9 @@ services:
     build:
       context: .
       dockerfile: src/prepare_data/Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
     container_name: prepare_data_service
     command: sh -c "while [ ! -f /app/data/raw/accidents_2023.csv ]; do sleep 1; done; python prepare_data.py"
     volumes:
@@ -29,6 +35,9 @@ services:
     build:
       context: .
       dockerfile: src/train_model/Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
     container_name: train_model_service
     command: sh -c "while [ ! -f /app/data/processed/prepared_accidents_2023.csv ]; do sleep 1; done; python train_model.py"
     volumes:

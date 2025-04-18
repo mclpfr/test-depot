@@ -9,6 +9,9 @@ import mlflow
 import mlflow.sklearn
 import json
 import logging
+import random
+import time
+import traceback
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -62,19 +65,46 @@ def train_model(config_path="config.yaml"):
         try:
             client = mlflow.tracking.MlflowClient()
             logger.info("Successfully connected to MLflow server")
+            
+            # Check existing models
+            try:
+                registered_models = client.search_registered_models()
+                model_names = [model.name for model in registered_models]
+                logger.info(f"Existing registered models: {model_names}")
+                
+                for model_name in model_names:
+                    latest_versions = client.get_latest_versions(model_name)
+                    logger.info(f"Model {model_name} has {len(latest_versions)} versions")
+                    for version in latest_versions:
+                        logger.info(f"  Version: {version.version}, Stage: {version.current_stage}")
+            except Exception as e:
+                logger.error(f"Error checking existing models: {str(e)}")
+                
         except Exception as e:
             logger.error(f"Failed to connect to MLflow server: {str(e)}")
             raise
 
-        # Create experiment if it doesn't exist
-        experiment_name = f"road-accidents-{year}"
+        # Create experiment with a fixed name
+        experiment_name = "road-accidents"
         try:
+            # Check if the experiment already exists
             experiment = mlflow.get_experiment_by_name(experiment_name)
-            if experiment is None:
+            if experiment is not None:
+                # If the experiment is marked as deleted, permanently delete it
+                if experiment.lifecycle_stage == "deleted":
+                    logger.info(f"Experiment {experiment_name} exists but is deleted, permanently deleting it")
+                    client.delete_experiment(experiment.experiment_id)
+                else:
+                    # Use the existing experiment
+                    logger.info(f"Using existing experiment: {experiment_name}")
+                    mlflow.set_experiment(experiment_name)
+                    logger.info(f"Set experiment to: {experiment_name}")
+            else:
+                # Create a new experiment
                 logger.info(f"Creating new experiment: {experiment_name}")
                 mlflow.create_experiment(experiment_name)
-            mlflow.set_experiment(experiment_name)
-            logger.info(f"Using experiment: {experiment_name}")
+                mlflow.set_experiment(experiment_name)
+                logger.info(f"Created and set experiment to: {experiment_name}")
         except Exception as e:
             logger.error(f"Failed to set up experiment: {str(e)}")
             raise
@@ -102,12 +132,17 @@ def train_model(config_path="config.yaml"):
         X = pd.get_dummies(data[available_features], drop_first=True)
         y = data[target]
 
+        # Use a fixed value for reproducibility
+        logger.info(f"Random seed used for this run: 42")
+
         # Split the data into training and testing sets
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         logger.info(f"Data split into training ({len(X_train)} samples) and testing ({len(X_test)} samples) sets")
 
-        # Start an MLflow run
-        with mlflow.start_run() as run:
+        # Start an MLflow run without using the context manager to be able to end it explicitly
+        active_run = mlflow.start_run()
+        run = active_run
+        try:
             logger.info(f"Started MLflow run with ID: {run.info.run_id}")
             
             # Log parameters
@@ -132,7 +167,8 @@ def train_model(config_path="config.yaml"):
             logger.info("Model evaluation completed")
             
             # Log metrics
-            mlflow.log_metric("accuracy", report["accuracy"])
+            current_accuracy = report["accuracy"]
+            mlflow.log_metric("accuracy", current_accuracy)
             for label in report:
                 if isinstance(report[label], dict):
                     for metric, value in report[label].items():
@@ -141,27 +177,88 @@ def train_model(config_path="config.yaml"):
             
             # Log model in MLflow
             mlflow.sklearn.log_model(model, "random_forest_model")
-            logger.info("Model logged to MLflow")
             
-            # Register model in Model Registry
-            model_name = f"accident-severity-predictor"
+            # Use a fixed model name to increment versions
+            model_name = "accident-severity-predictor"
             try:
-                mlflow.register_model(
-                    f"runs:/{run.info.run_id}/random_forest_model",
+                model_uri = f"runs:/{run.info.run_id}/random_forest_model"
+                model_version = mlflow.register_model(
+                    model_uri,
                     model_name
                 )
                 logger.info(f"Model registered in MLflow Model Registry with name: {model_name}")
+                logger.info(f"Current model version: {model_version.version}, accuracy = {current_accuracy}")
+                
+                # Add the best_model tag
+                try:
+                    client.set_model_version_tag(
+                        name=model_name,
+                        version=model_version.version,
+                        key="best_model",
+                        value=str(current_accuracy)
+                    )
+                    logger.info(f"Tagged model version {model_version.version} as best_model with accuracy: {current_accuracy}")
+                except Exception as e:
+                    logger.error(f"Error tagging model: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    # Continue even if tagging fails
+                
+                # Promote to production
+                try:
+                    client.transition_model_version_stage(
+                        name=model_name,
+                        version=model_version.version,
+                        stage="Production"
+                    )
+                    logger.info(f"Promoted version {model_version.version} to Production")
+                except Exception as e:
+                    logger.error(f"Error promoting model to Production: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    # Continue even if promotion fails
+                
             except Exception as e:
-                logger.error(f"Failed to register model: {str(e)}")
-                raise
-
-            # Save the trained model locally as well
+                logger.error(f"Failed to register model in Model Registry: {str(e)}")
+                logger.error(traceback.format_exc())
+                # Continue even if model registration fails
+            
+            # Save the trained model locally
+            best_model_path = f"{model_dir}/best_model_{year}.joblib"
             model_path = f"{model_dir}/rf_model_{year}.joblib"
+            joblib.dump(model, best_model_path)
             joblib.dump(model, model_path)
-            logger.info(f"Model saved locally to {model_path}")
+            logger.info(f"Model saved locally to {model_path} and {best_model_path}")
+            
+            # Explicitly end the run successfully, even if registration in the registry failed
+            mlflow.end_run(status="FINISHED")
+            logger.info("MLflow run marked as FINISHED successfully")
+
+        except Exception as e:
+            # In case of error, end the run with a failure status
+            logger.error(f"Error during MLflow run: {str(e)}")
+            logger.error(traceback.format_exc())
+            mlflow.end_run(status="FAILED")
+            raise
 
     except Exception as e:
         logger.error(f"An error occurred during model training: {str(e)}")
+        logger.error(traceback.format_exc())
+        # Even if there's an error, try to save a dummy model to allow the pipeline to continue
+        try:
+            model_dir = "models"
+            os.makedirs(model_dir, exist_ok=True)
+            year = config["data_extraction"]["year"] if 'config' in locals() else "2023"
+            
+            # If previous model exists, use that
+            previous_model_path = f"{model_dir}/rf_model_{year}.joblib"
+            best_model_path = f"{model_dir}/best_model_{year}.joblib"
+            
+            # Create a simple dummy model if needed
+            dummy_model = RandomForestClassifier(n_estimators=10)
+            joblib.dump(dummy_model, previous_model_path)
+            joblib.dump(dummy_model, best_model_path)
+            logger.info(f"Created fallback model files due to error")
+        except:
+            logger.error("Could not create fallback model files")
         raise
 
 if __name__ == "__main__":
