@@ -1,8 +1,23 @@
 import os
 import time
 import subprocess
+import yaml
 
 def main():
+    # Load credentials from config.yaml
+    with open("config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+        dagshub_config = config.get("dagshub", {})
+        token = dagshub_config.get("token", "")
+    
+    # Configure DVC credentials directly
+    try:
+        subprocess.run(["dvc", "remote", "modify", "origin", "--local", "access_key_id", "46fb4962402bf1118d644028129e9c98e5f60ce6"], check=True)
+        subprocess.run(["dvc", "remote", "modify", "origin", "--local", "secret_access_key", "46fb4962402bf1118d644028129e9c98e5f60ce6"], check=True)
+        print("DVC credentials configured.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error configuring DVC credentials: {e}")
+
     time.sleep(10)
     
     files_to_check = [

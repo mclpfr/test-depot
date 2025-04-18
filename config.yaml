@@ -13,3 +13,7 @@ postgresql:
   user: "postgres"
   password: "postgres"
   database: "road_accidents" 
+
+dagshub:
+  user: "mclpfr"
+  token: "46fb4962402bf1118d644028129e9c98e5f60ce6" 

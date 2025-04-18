@@ -32,6 +32,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+1. Copie du fichier config.yaml.example pour créer un nouveau fichier de configuration
+```bash
+cp config.yaml.example config.yaml
+```
+
+2. Modifiez le fichier `config.yaml` :
+   - Section `mlflow`
+   - Section `dagshub`
+
+Le fichier `config.yaml` contient toutes les configurations nécessaires pour l'extraction des données, le suivi MLflow, la base de données PostgreSQL et l'intégration avec DagsHub.
+
 ## Utilisation
 ### Extraction des Données
 ```bash
