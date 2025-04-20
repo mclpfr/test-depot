@@ -32,6 +32,20 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+1. Copiez le fichier exemple pour créer votre configuration
+```bash
+cp config.yaml.example config.yaml
+```
+
+2. Modifiez le fichier `config.yaml` :
+   - Section `mlflow`: Remplacez `USERNAME`, `REPOSITORY` et `YOUR_DAGSHUB_TOKEN` par vos identifiants DagsHub
+   - Section `postgresql`: Modifiez le mot de passe si nécessaire
+   - Section `dagshub`: Remplacez `USERNAME` et `YOUR_DAGSHUB_TOKEN` par vos identifiants DagsHub
+
+Le fichier `config.yaml` contient toutes les configurations nécessaires pour l'extraction des données, le suivi MLflow, la base de données PostgreSQL et l'intégration avec DagsHub.
+
 ## Utilisation
 ### Extraction des Données
 ```bash

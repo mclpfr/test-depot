@@ -5,8 +5,8 @@ stages:
     deps:
     - path: config.yaml
       hash: md5
-      md5: b6284b86eaac4812f4f33a530e8336d5
-      size: 457
+      md5: 83acbde3b0b463c02cc02f800db1e058
+      size: 537
     - path: src/extract_data/extract_data.py
       hash: md5
       md5: c57352bf936c1cd2656285b0569fc6b5
@@ -21,38 +21,38 @@ stages:
     deps:
     - path: config.yaml
       hash: md5
-      md5: b6284b86eaac4812f4f33a530e8336d5
-      size: 457
+      md5: 83acbde3b0b463c02cc02f800db1e058
+      size: 537
     - path: data/raw/accidents_2023.csv
       hash: md5
       md5: fbb1e459ca3aac25fdbf35a3d04173e9
       size: 74537187
     - path: src/prepare_data/prepare_data.py
       hash: md5
-      md5: f699db0fc62e3c9ed0bb6b89500700b5
-      size: 1629
+      md5: b9dd76683ad99f348b6fe23149074b2e
+      size: 1856
     outs:
     - path: data/processed/prepared_accidents_2023.csv
       hash: md5
-      md5: 01194ef8d5ea89d37bbc5312f45bfe57
-      size: 66922106
+      md5: a04c5aab8e5b2c4311002178f7329394
+      size: 266777072
   models:
     cmd: python src/train_model/train_model.py
     deps:
     - path: config.yaml
       hash: md5
-      md5: b6284b86eaac4812f4f33a530e8336d5
-      size: 457
+      md5: 83acbde3b0b463c02cc02f800db1e058
+      size: 537
     - path: data/processed/prepared_accidents_2023.csv
       hash: md5
-      md5: 01194ef8d5ea89d37bbc5312f45bfe57
-      size: 66922106
+      md5: a04c5aab8e5b2c4311002178f7329394
+      size: 266777072
     - path: src/train_model/train_model.py
       hash: md5
-      md5: 0ea28fa72d80c818cfd8d400b6e910b8
-      size: 11822
+      md5: 0860d99fa169152db8fa042459882cde
+      size: 13831
     outs:
     - path: models/rf_model_2023.joblib
       hash: md5
-      md5: b89452d14253364434ea71951569a655
-      size: 157549097
+      md5: f2e6a6a39f06238a04f9bde12b15a618
+      size: 474532297

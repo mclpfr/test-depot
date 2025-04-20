@@ -18,7 +18,7 @@ RUN mkdir -p /app/data/raw && \
     groupadd -g ${GROUP_ID} appuser && \
     useradd -u ${USER_ID} -g appuser -s /bin/bash -m appuser && \
     # Donner les permissions à l'utilisateur
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app /app/data
 
 COPY config.yaml .
 

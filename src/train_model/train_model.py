@@ -191,15 +191,39 @@ def train_model(config_path="config.yaml"):
                 
                 # Add the best_model tag
                 try:
-                    client.set_model_version_tag(
-                        name=model_name,
-                        version=model_version.version,
-                        key="best_model",
-                        value=str(current_accuracy)
-                    )
-                    logger.info(f"Tagged model version {model_version.version} as best_model with accuracy: {current_accuracy}")
+                    # First, check if there's an existing model tagged as best_model
+                    best_model_version = None
+                    best_model_accuracy = 0.0
+                    
+                    # Get all versions of the model
+                    all_versions = client.search_model_versions(f"name='{model_name}'")
+                    
+                    # Find the version tagged as best_model
+                    for version in all_versions:
+                        tags = version.tags
+                        if "best_model" in tags:
+                            try:
+                                version_accuracy = float(tags["best_model"])
+                                if version_accuracy > best_model_accuracy:
+                                    best_model_accuracy = version_accuracy
+                                    best_model_version = version.version
+                                logger.info(f"Found existing best_model (version {version.version}) with accuracy: {version_accuracy}")
+                            except ValueError:
+                                logger.warning(f"Invalid accuracy value in best_model tag: {tags['best_model']}")
+                    
+                    # Only tag the current model as best_model if it's better than previous best
+                    if current_accuracy > best_model_accuracy:
+                        client.set_model_version_tag(
+                            name=model_name,
+                            version=model_version.version,
+                            key="best_model",
+                            value=str(current_accuracy)
+                        )
+                        logger.info(f"Tagged model version {model_version.version} as best_model with accuracy: {current_accuracy} (improved from {best_model_accuracy})")
+                    else:
+                        logger.info(f"Current model accuracy ({current_accuracy}) is not better than existing best model ({best_model_accuracy}), keeping existing best_model tag")
                 except Exception as e:
-                    logger.error(f"Error tagging model: {str(e)}")
+                    logger.error(f"Error processing best_model tags: {str(e)}")
                     logger.error(traceback.format_exc())
                     # Continue even if tagging fails
                 
@@ -222,11 +246,18 @@ def train_model(config_path="config.yaml"):
                 # Continue even if model registration fails
             
             # Save the trained model locally
-            best_model_path = f"{model_dir}/best_model_{year}.joblib"
             model_path = f"{model_dir}/rf_model_{year}.joblib"
-            joblib.dump(model, best_model_path)
+            best_model_path = f"{model_dir}/best_model_{year}.joblib"
+            
+            # Always save the current model
             joblib.dump(model, model_path)
-            logger.info(f"Model saved locally to {model_path} and {best_model_path}")
+            
+            # Only save as best_model if it has better accuracy than previous best
+            if current_accuracy > best_model_accuracy:
+                joblib.dump(model, best_model_path)
+                logger.info(f"Model saved locally to {model_path} and {best_model_path} (as new best model)")
+            else:
+                logger.info(f"Model saved locally to {model_path} (keeping existing best_model)")
             
             # Explicitly end the run successfully, even if registration in the registry failed
             mlflow.end_run(status="FINISHED")
