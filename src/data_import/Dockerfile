@@ -6,6 +6,10 @@ ARG GROUP_ID=1000
 
 WORKDIR /app
 
+# Configuration de la limite de mémoire
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONMEM=256m
+
 RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

@@ -8,8 +8,11 @@ WORKDIR /app
 
 COPY requirements.txt .
 
+# Configuration des limites de mémoire et d'optimisation
 ENV OPENBLAS_NUM_THREADS=1
 ENV OMP_NUM_THREADS=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONMEM=256m
 
 RUN pip install --no-cache-dir -r requirements.txt
 

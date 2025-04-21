@@ -6,6 +6,11 @@ ARG GROUP_ID=1000
 
 WORKDIR /app
 
+# Configuration de la limite de mémoire
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONMEM=256m
+ENV JAVA_OPTS="-Xmx512m -Xms256m"
+
 COPY requirements.txt .
 RUN pip install --upgrade pip && PIP_PROGRESS_BAR=off pip install --no-cache-dir -r requirements.txt
 

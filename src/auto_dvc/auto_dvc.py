@@ -4,13 +4,13 @@ import subprocess
 import yaml
 
 def main():
-    # Charger les credentials depuis config.yaml
+    # Load credentials from config.yaml
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
         dagshub_config = config.get("dagshub", {})
         token = dagshub_config.get("token", "")
     
-    # Configurer les identifiants DVC directement
+    # Configure DVC credentials directly
     try:
         subprocess.run(["dvc", "remote", "modify", "origin", "--local", "access_key_id", "46fb4962402bf1118d644028129e9c98e5f60ce6"], check=True)
         subprocess.run(["dvc", "remote", "modify", "origin", "--local", "secret_access_key", "46fb4962402bf1118d644028129e9c98e5f60ce6"], check=True)
