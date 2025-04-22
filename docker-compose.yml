@@ -19,6 +19,22 @@ services:
       - ./config.yaml:/app/config.yaml
     working_dir: /app
 
+  synthet_data:
+    build:
+      context: .
+      dockerfile: src/synthet_data/Dockerfile
+      args:
+        <<: *user-info
+    container_name: synthet_data_service
+    command: python synthet_data.py
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml
+    working_dir: /app
+    depends_on:
+      extract_data:
+        condition: service_completed_successfully
+
   prepare_data:
     build:
       context: .
@@ -32,7 +48,7 @@ services:
       - ./config.yaml:/app/config.yaml
     working_dir: /app
     depends_on:
-      extract_data:
+      synthet_data:
         condition: service_completed_successfully
 
   train_model:

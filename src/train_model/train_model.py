@@ -254,9 +254,18 @@ def train_model(config_path="config.yaml"):
             
             # Only save as best_model if it has better accuracy than previous best
             if current_accuracy > best_model_accuracy:
+                # Save the best model as a complete file, not a symbolic link
                 joblib.dump(model, best_model_path)
                 logger.info(f"Model saved locally to {model_path} and {best_model_path} (as new best model)")
             else:
+                # If a better model already exists, check if it exists physically
+                if os.path.exists(best_model_path):
+                    logger.info(f"Keeping existing best_model at {best_model_path}")
+                else:
+                    # If it doesn't exist, use the current model as the best model
+                    joblib.dump(model, best_model_path)
+                    logger.info(f"No existing best_model found. Creating one with current model at {best_model_path}")
+                
                 logger.info(f"Model saved locally to {model_path} (keeping existing best_model)")
             
             # Explicitly end the run successfully, even if registration in the registry failed
@@ -286,6 +295,7 @@ def train_model(config_path="config.yaml"):
             # Create a simple dummy model if needed
             dummy_model = RandomForestClassifier(n_estimators=10)
             joblib.dump(dummy_model, previous_model_path)
+
             joblib.dump(dummy_model, best_model_path)
             logger.info(f"Created fallback model files due to error")
         except:
