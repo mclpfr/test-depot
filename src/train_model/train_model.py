@@ -73,10 +73,14 @@ def train_model(config_path="config.yaml"):
                 logger.info(f"Existing registered models: {model_names}")
                 
                 for model_name in model_names:
-                    latest_versions = client.get_latest_versions(model_name)
-                    logger.info(f"Model {model_name} has {len(latest_versions)} versions")
-                    for version in latest_versions:
-                        logger.info(f"  Version: {version.version}, Stage: {version.current_stage}")
+                    all_versions = client.search_model_versions(f"name='{model_name}'")
+                    logger.info(f"Model {model_name} has {len(all_versions)} versions")
+                    # Log only the latest version with best model tag
+                    best_versions = [v for v in all_versions if v.tags and "best_model" in v.tags]
+                    if best_versions:
+                        best_version = best_versions[0]
+                        logger.info(f"  Latest best version: {best_version.version}, Stage: {best_version.current_stage}")
+                        logger.info(f"  Tags: {best_version.tags}")
             except Exception as e:
                 logger.error(f"Error checking existing models: {str(e)}")
                 
@@ -85,7 +89,7 @@ def train_model(config_path="config.yaml"):
             raise
 
         # Create experiment with a fixed name
-        experiment_name = "road-accidents"
+        experiment_name = "traffic-incidents-2023"
         try:
             # Check if the experiment already exists
             experiment = mlflow.get_experiment_by_name(experiment_name)
@@ -131,6 +135,16 @@ def train_model(config_path="config.yaml"):
         # Prepare features (X) and target (y)
         X = pd.get_dummies(data[available_features], drop_first=True)
         y = data[target]
+        
+        # Vérifier et traiter les valeurs NaN dans la variable cible
+        if y.isna().any():
+            logger.info(f"Found {y.isna().sum()} NaN values in target variable. Dropping these rows.")
+            # Créer un masque des lignes sans NaN
+            mask = ~y.isna()
+            # Filtrer X et y pour ne garder que les lignes sans NaN
+            X = X[mask]
+            y = y[mask]
+            logger.info(f"After removing NaN values: {len(X)} samples remaining")
 
         # Use a fixed value for reproducibility
         logger.info(f"Random seed used for this run: 42")
@@ -197,29 +211,50 @@ def train_model(config_path="config.yaml"):
                     
                     # Get all versions of the model
                     all_versions = client.search_model_versions(f"name='{model_name}'")
+                    logger.info(f"Found {len(all_versions)} total versions for model {model_name}")
                     
                     # Find the version tagged as best_model
                     for version in all_versions:
-                        tags = version.tags
-                        if "best_model" in tags:
+                        if version.tags and "best_model" in version.tags:
                             try:
-                                version_accuracy = float(tags["best_model"])
+                                version_accuracy = float(version.tags["best_model"])
+                                logger.info(f"Found model version {version.version} with best_model tag and accuracy {version_accuracy}")
                                 if version_accuracy > best_model_accuracy:
                                     best_model_accuracy = version_accuracy
                                     best_model_version = version.version
-                                logger.info(f"Found existing best_model (version {version.version}) with accuracy: {version_accuracy}")
                             except ValueError:
-                                logger.warning(f"Invalid accuracy value in best_model tag: {tags['best_model']}")
+                                logger.warning(f"Invalid accuracy value in best_model tag: {version.tags['best_model']}")
+                    
+                    if best_model_version is not None:
+                        logger.info(f"Current best model is version {best_model_version} with accuracy {best_model_accuracy}")
+                    else:
+                        logger.info("No existing model found with best_model tag")
                     
                     # Only tag the current model as best_model if it's better than previous best
                     if current_accuracy > best_model_accuracy:
-                        client.set_model_version_tag(
-                            name=model_name,
-                            version=model_version.version,
-                            key="best_model",
-                            value=str(current_accuracy)
-                        )
-                        logger.info(f"Tagged model version {model_version.version} as best_model with accuracy: {current_accuracy} (improved from {best_model_accuracy})")
+                        # Si on a trouvé un ancien meilleur modèle, on retire son tag
+                        if best_model_version is not None:
+                            try:
+                                client.delete_model_version_tag(
+                                    name=model_name,
+                                    version=best_model_version,
+                                    key="best_model"
+                                )
+                                logger.info(f"Removed best_model tag from version {best_model_version}")
+                            except Exception as e:
+                                logger.error(f"Error removing best_model tag from version {best_model_version}: {str(e)}")
+                        
+                        # On tague le nouveau modèle comme best_model
+                        try:
+                            client.set_model_version_tag(
+                                name=model_name,
+                                version=model_version.version,
+                                key="best_model",
+                                value=str(current_accuracy)
+                            )
+                            logger.info(f"Tagged model version {model_version.version} as best_model with accuracy: {current_accuracy} (improved from {best_model_accuracy})")
+                        except Exception as e:
+                            logger.error(f"Error setting best_model tag for version {model_version.version}: {str(e)}")
                     else:
                         logger.info(f"Current model accuracy ({current_accuracy}) is not better than existing best model ({best_model_accuracy}), keeping existing best_model tag")
                 except Exception as e:
@@ -271,6 +306,10 @@ def train_model(config_path="config.yaml"):
             # Explicitly end the run successfully, even if registration in the registry failed
             mlflow.end_run(status="FINISHED")
             logger.info("MLflow run marked as FINISHED successfully")
+
+            # Création du fichier de signal de fin pour auto_dvc
+            with open("models/training.lock", "w") as f:
+                f.write("done\n")
 
         except Exception as e:
             # In case of error, end the run with a failure status

@@ -18,21 +18,21 @@ services:
       - ./config.yaml:/app/config.yaml
     working_dir: /app
 
-  synthet_data:
-    build:
-      context: .
-      dockerfile: src/synthet_data/Dockerfile
-      args:
-        <<: *user-info
-    container_name: synthet_data_service
-    command: python synthet_data.py
-    volumes:
-      - ./data:/app/data
-      - ./config.yaml:/app/config.yaml
-    working_dir: /app
-    depends_on:
-      extract_data:
-        condition: service_started
+  # synthet_data:
+  #   build:
+  #     context: .
+  #     dockerfile: src/synthet_data/Dockerfile
+  #     args:
+  #       <<: *user-info
+  #   container_name: synthet_data_service
+  #   command: python synthet_data.py
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./config.yaml:/app/config.yaml
+  #   working_dir: /app
+  #   depends_on:
+  #     extract_data:
+  #       condition: service_started
 
   prepare_data:
     build:
@@ -41,14 +41,20 @@ services:
       args:
         <<: *user-info
     container_name: prepare_data_service
-    command: sh -c "python prepare_data.py"
+    command: >
+      sh -c "
+        while [ ! -f /app/data/raw/extract_data.done ]; do
+          echo 'Waiting for extract_data to finish...';
+          sleep 5;
+        done;
+        python prepare_data.py
+      "
     volumes:
       - ./data:/app/data
       - ./config.yaml:/app/config.yaml
     working_dir: /app
     depends_on:
-      synthet_data:
-        condition: service_started
+      - extract_data
 
   train_model:
     build:
@@ -57,58 +63,67 @@ services:
       args:
         <<: *user-info
     container_name: train_model_service
-    command: sh -c "python train_model.py"
+    user: root
+    command: >
+      sh -c "
+        while [ ! -f /app/data/processed/prepared_data.done ]; do
+          echo 'Waiting for prepare_data to finish...';
+          sleep 5;
+        done;
+        chown -R appuser:appuser /app/models;
+        rm -f /app/models/training.lock;
+        su -c 'python train_model.py' appuser
+      "
     volumes:
       - ./data:/app/data
       - ./models:/app/models
       - ./config.yaml:/app/config.yaml
     working_dir: /app
     depends_on:
-      prepare_data:
-        condition: service_started
+      - prepare_data
 
-  postgres:
-    build:
-      context: .
-      dockerfile: src/postgresql/Dockerfile
-    container_name: postgres_service
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./src/postgresql/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    depends_on:
-      train_model:
-        condition: service_started
+  # postgres:
+  #   build:
+  #     context: .
+  #     dockerfile: src/postgresql/Dockerfile
+  #   container_name: postgres_service
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: postgres
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./src/postgresql/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   depends_on:
+  #     train_model:
+  #       condition: service_started
 
-  data_import:
-    build:
-      context: .
-      dockerfile: src/data_import/Dockerfile
-    container_name: data_import_service
-    command: sh -c "/app/wait-for-postgres.sh postgres 5432 python3 /app/import_data.py"
-    volumes:
-      - ./data:/app/data
-      - ./config.yaml:/app/config.yaml
-      - ./models:/app/models
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: road_accidents
-    depends_on:
-      postgres:
-        condition: service_healthy
+  # data_import:
+  #   build:
+  #     context: .
+  #     dockerfile: src/data_import/Dockerfile
+  #   container_name: data_import_service
+  #   command: sh -c "/app/wait-for-postgres.sh postgres 5432 python3 /app/import_data.py"
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./config.yaml:/app/config.yaml
+  #     - ./models:/app/models
+  #   environment:
+  #     POSTGRES_HOST: postgres
+  #     POSTGRES_PORT: 5432
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: road_accidents
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
 
   auto_dvc:
     build:
@@ -120,6 +135,11 @@ services:
     user: root
     command: >
       sh -c "
+        echo 'Waiting for extract_data, prepare_data, and train_model to complete...';
+        while [ ! -f /app/models/training.lock ]; do
+          echo 'Waiting for training to complete...';
+          sleep 5;
+        done;
         chown -R appuser:appuser /app/.dvc;
         su -c 'python auto_dvc.py' appuser
       "
@@ -136,8 +156,7 @@ services:
       - ./.git:/app/.git
     working_dir: /app
     depends_on:
-      data_import:
-        condition: service_started
+      - train_model
 
 volumes:
   postgres_data:

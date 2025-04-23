@@ -28,6 +28,12 @@ def prepare_data(config_path="config.yaml"):
     # Handle missing values by filling with the mode of each column
     data.fillna(data.mode().iloc[0], inplace=True)
 
+    # S'assurer spécifiquement que 'grav' n'a pas de valeurs NaN
+    if 'grav' in data.columns and data['grav'].isna().any():
+        # On supprime les lignes avec 'grav' = NaN car c'est notre variable cible
+        data = data.dropna(subset=['grav'])
+        print(f"Removed rows with NaN in 'grav' column. Remaining rows: {len(data)}")
+
     data['grav'] = data['grav'].apply(lambda x: 0 if x in [3, 4] else 1)
 
     # Select numerical columns for normalization (excluding 'grav' and non-numerical columns)
@@ -43,6 +49,8 @@ def prepare_data(config_path="config.yaml"):
     output_path = os.path.join(processed_dir, f"prepared_accidents_{year}.csv")
     data.to_csv(output_path, index=False)
     print(f"Prepared data saved to {output_path}")
+    with open(os.path.join(processed_dir, "prepared_data.done"), "w") as f:
+        f.write("done\n")
 
 if __name__ == "__main__":
     prepare_data()

@@ -74,6 +74,8 @@ def download_accident_data(config_path="config.yaml"):
     merged_data.to_csv(output_path, index=False)
 
     print(f'Download and merge completed: All CSV files for {year} are stored in "{output_dir}".')
+    with open(os.path.join(output_dir, "extract_data.done"), "w") as f:
+        f.write("done\n")
 
 # Execute the function
 if __name__ == "__main__":
