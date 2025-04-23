@@ -63,6 +63,12 @@ def download_accident_data(config_path="config.yaml"):
     # Merge the datasets on the 'Num_Acc' column
     merged_data = caract.merge(usagers, on="Num_Acc").merge(vehicules, on="Num_Acc").merge(lieux, on="Num_Acc")
 
+    # Limit the dataset to half its original size to optimize performance
+    original_size = len(merged_data)
+    half_size = original_size // 2
+    print(f"Limiting the dataset to {half_size} rows (original size: {original_size} rows)")
+    merged_data = merged_data.head(half_size)
+    
     # Save the merged data to the output directory
     output_path = os.path.join(output_dir, f'accidents_{year}.csv')
     merged_data.to_csv(output_path, index=False)

@@ -1,6 +1,5 @@
 version: '3.8'
 
-# Utilisation de valeurs fixes pour UID et GID
 x-user-info: &user-info
   USER_ID: "1000"
   GROUP_ID: "1000"
@@ -33,7 +32,7 @@ services:
     working_dir: /app
     depends_on:
       extract_data:
-        condition: service_completed_successfully
+        condition: service_started
 
   prepare_data:
     build:
@@ -49,7 +48,7 @@ services:
     working_dir: /app
     depends_on:
       synthet_data:
-        condition: service_completed_successfully
+        condition: service_started
 
   train_model:
     build:
@@ -66,7 +65,7 @@ services:
     working_dir: /app
     depends_on:
       prepare_data:
-        condition: service_completed_successfully
+        condition: service_started
 
   postgres:
     build:
@@ -89,7 +88,7 @@ services:
       retries: 5
     depends_on:
       train_model:
-        condition: service_completed_successfully
+        condition: service_started
 
   data_import:
     build:
@@ -128,7 +127,7 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./.dvc:/app/.dvc
-      - ./.dvc/config.local:/app/.dvc/config.local
+      - ./.dvc/config:/app/.dvc/config
       - ./.dvcignore:/app/.dvcignore
       - ./dvc.yaml:/app/dvc.yaml
       - ./dvc.lock:/app/dvc.lock
@@ -138,7 +137,7 @@ services:
     working_dir: /app
     depends_on:
       data_import:
-        condition: service_completed_successfully
+        condition: service_started
 
 volumes:
   postgres_data:
