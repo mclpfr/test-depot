@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
 import yaml
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 import os
@@ -36,6 +36,20 @@ def load_config(config_path="config.yaml"):
                 "tracking_uri": os.getenv("MLFLOW_TRACKING_URI"),
                 "username": os.getenv("MLFLOW_TRACKING_USERNAME"),
                 "password": os.getenv("MLFLOW_TRACKING_PASSWORD")
+            },
+            "model": {
+                "type": "RandomForestClassifier",
+                "hyperparameters": {
+                    "n_estimators": [100],
+                    "max_depth": [None],
+                    "min_samples_split": [2],
+                    "min_samples_leaf": [1],
+                    "max_features": ["sqrt"],
+                    "class_weight": [None]
+                },
+                "random_state": 42,
+                "test_size": 0.2,
+                "cv_folds": 5
             }
         }
         return config
@@ -147,7 +161,10 @@ def train_model(config_path="config.yaml"):
         logger.info(f"Random seed used for this run: 42")
 
         # Split the data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        model_config = config.get("model", {})
+        test_size = model_config.get("test_size", 0.2)
+        random_state = model_config.get("random_state", 42)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
         logger.info(f"Data split into training ({len(X_train)} samples) and testing ({len(X_test)} samples) sets")
 
         # Start an MLflow run without using the context manager to be able to end it explicitly
@@ -156,22 +173,42 @@ def train_model(config_path="config.yaml"):
         try:
             logger.info(f"Started MLflow run with ID: {run.info.run_id}")
             
-            # Log parameters
+            # Récupération des hyperparamètres depuis la configuration
+            hyperparameters = model_config.get("hyperparameters", {})
+            cv_folds = model_config.get("cv_folds", 5)
+            
+            # Grid search avec validation croisée
+            logger.info("Starting Grid Search for hyperparameter optimization...")
+            rf_model = RandomForestClassifier(random_state=random_state)
+            grid_search = GridSearchCV(
+                estimator=rf_model,
+                param_grid=hyperparameters,
+                cv=cv_folds,
+                scoring='accuracy',
+                n_jobs=-1,
+                verbose=2
+            )
+            
+            # Entraînement avec recherche d'hyperparamètres
+            logger.info("Training model with hyperparameter optimization...")
+            grid_search.fit(X_train, y_train)
+            
+            # Récupération du meilleur modèle
+            model = grid_search.best_estimator_
+            best_params = grid_search.best_params_
+            
+            # Log des paramètres
             params = {
-                "model_type": "RandomForestClassifier",
-                "n_estimators": 100,
-                "random_state": 42,
+                "model_type": model_config.get("type", "RandomForestClassifier"),
                 "year": year,
-                "features": json.dumps(available_features)
+                "features": json.dumps(available_features),
+                "cv_folds": cv_folds,
+                "test_size": test_size,
+                **best_params  # Ajoute les meilleurs hyperparamètres trouvés
             }
             mlflow.log_params(params)
-            logger.info("Logged model parameters")
+            logger.info(f"Best parameters found: {best_params}")
             
-            # Train a Random Forest Classifier
-            model = RandomForestClassifier(n_estimators=100, random_state=42)
-            model.fit(X_train, y_train)
-            logger.info("Model training completed")
-
             # Evaluate the model on the test set
             y_pred = model.predict(X_test)
             report = classification_report(y_test, y_pred, output_dict=True)

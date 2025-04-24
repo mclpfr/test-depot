@@ -28,16 +28,14 @@ def prepare_data(config_path="config.yaml"):
     # Remove 'adr' column if it exists as it's not relevant for analysis
     if 'adr' in data.columns:
         data = data.drop('adr', axis=1)
-        print("Column 'adr' removed as it's not relevant for analysis.")
 
     # Handle missing values by filling with the mode of each column
     data.fillna(data.mode().iloc[0], inplace=True)
 
     # Specifically ensure that 'grav' has no NaN values
     if 'grav' in data.columns and data['grav'].isna().any():
-        # Remove rows with 'grav' = NaN because it is our target variable
+        # Remove rows with 'grav' = NaN 
         data = data.dropna(subset=['grav'])
-        print(f"Removed rows with NaN in 'grav' column. Remaining rows: {len(data)}")
 
     # Convert gravity to binary classification (0: not severe, 1: severe)
     data['grav'] = data['grav'].apply(lambda x: 1 if x in [3, 4] else 0)

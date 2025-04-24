@@ -6,7 +6,20 @@ mlflow:
   enabled: true
   tracking_uri: "https://dagshub.com/mclpfr/mlops-road-accidents.mlflow"
   username: "mclpfr"
-  password: "46fb4962402bf1118d644028129e9c98e5f60ce6" 
+  password: "46fb4962402bf1118d644028129e9c98e5f60ce6"
+
+model:
+  type: "RandomForestClassifier"
+  hyperparameters:
+    n_estimators: [100]
+    max_depth: [10]
+    min_samples_split: [2]
+    min_samples_leaf: [1]
+    max_features: ["sqrt"]
+    class_weight: ["balanced"]
+  random_state: 42
+  test_size: 0.2
+  cv_folds: 3
 
 postgresql:
   host: "postgres"

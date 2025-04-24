@@ -23,7 +23,8 @@ def main():
     files_to_check = [
         "data/raw/accidents_2023.csv",
         "data/processed/prepared_accidents_2023.csv",
-        "models/rf_model_2023.joblib"
+        "models/rf_model_2023.joblib",
+        "models/best_model_2023.joblib"
     ]
     
     for file_path in files_to_check:
