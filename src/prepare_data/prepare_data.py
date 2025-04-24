@@ -19,22 +19,28 @@ def prepare_data(config_path="config.yaml"):
     processed_dir = "data/processed"
     os.makedirs(processed_dir, exist_ok=True)
 
-    # Utiliser le fichier varié s'il existe, sinon le fichier original
+    # Use the varied file if it exists, otherwise the original file
     if os.path.exists(varied_path):
-        data = pd.read_csv(varied_path, low_memory=False)
+        data = pd.read_csv(varied_path, low_memory=False, sep=';')
     else:
-        data = pd.read_csv(raw_path, low_memory=False)
+        data = pd.read_csv(raw_path, low_memory=False, sep=';')
+
+    # Remove 'adr' column if it exists as it's not relevant for analysis
+    if 'adr' in data.columns:
+        data = data.drop('adr', axis=1)
+        print("Column 'adr' removed as it's not relevant for analysis.")
 
     # Handle missing values by filling with the mode of each column
     data.fillna(data.mode().iloc[0], inplace=True)
 
-    # S'assurer spécifiquement que 'grav' n'a pas de valeurs NaN
+    # Specifically ensure that 'grav' has no NaN values
     if 'grav' in data.columns and data['grav'].isna().any():
-        # On supprime les lignes avec 'grav' = NaN car c'est notre variable cible
+        # Remove rows with 'grav' = NaN because it is our target variable
         data = data.dropna(subset=['grav'])
         print(f"Removed rows with NaN in 'grav' column. Remaining rows: {len(data)}")
 
-    data['grav'] = data['grav'].apply(lambda x: 0 if x in [3, 4] else 1)
+    # Convert gravity to binary classification (0: not severe, 1: severe)
+    data['grav'] = data['grav'].apply(lambda x: 1 if x in [3, 4] else 0)
 
     # Select numerical columns for normalization (excluding 'grav' and non-numerical columns)
     numerical_columns = data.select_dtypes(include=['float64', 'int64']).columns

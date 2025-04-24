@@ -136,12 +136,9 @@ def train_model(config_path="config.yaml"):
         X = pd.get_dummies(data[available_features], drop_first=True)
         y = data[target]
         
-        # Vérifier et traiter les valeurs NaN dans la variable cible
         if y.isna().any():
             logger.info(f"Found {y.isna().sum()} NaN values in target variable. Dropping these rows.")
-            # Créer un masque des lignes sans NaN
             mask = ~y.isna()
-            # Filtrer X et y pour ne garder que les lignes sans NaN
             X = X[mask]
             y = y[mask]
             logger.info(f"After removing NaN values: {len(X)} samples remaining")
