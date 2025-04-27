@@ -31,3 +31,7 @@ postgresql:
 dagshub:
   user: "mclpfr"
   token: "46fb4962402bf1118d644028129e9c98e5f60ce6" 
+
+dvc:
+  dagshub_user: "mclpfr"
+  dagshub_token: "46fb4962402bf1118d644028129e9c98e5f60ce6" 

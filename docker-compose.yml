@@ -82,48 +82,48 @@ services:
     depends_on:
       - prepare_data
 
-  # postgres:
-  #   build:
-  #     context: .
-  #     dockerfile: src/postgresql/Dockerfile
-  #   container_name: postgres_service
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: postgres
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #     - ./src/postgresql/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #   depends_on:
-  #     train_model:
-  #       condition: service_started
+  postgres:
+    build:
+      context: .
+      dockerfile: src/postgresql/Dockerfile
+    container_name: postgres_service
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/postgresql/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      train_model:
+        condition: service_started
 
-  # data_import:
-  #   build:
-  #     context: .
-  #     dockerfile: src/data_import/Dockerfile
-  #   container_name: data_import_service
-  #   command: sh -c "/app/wait-for-postgres.sh postgres 5432 python3 /app/import_data.py"
-  #   volumes:
-  #     - ./data:/app/data
-  #     - ./config.yaml:/app/config.yaml
-  #     - ./models:/app/models
-  #   environment:
-  #     POSTGRES_HOST: postgres
-  #     POSTGRES_PORT: 5432
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: road_accidents
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
+  data_import:
+    build:
+      context: .
+      dockerfile: src/data_import/Dockerfile
+    container_name: data_import_service
+    command: sh -c "/app/wait-for-postgres.sh postgres 5432 python3 /app/import_data.py"
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml
+      - ./models:/app/models
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: road_accidents
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   auto_dvc:
     build:
@@ -150,13 +150,34 @@ services:
       - ./.dvc/config:/app/.dvc/config
       - ./.dvcignore:/app/.dvcignore
       - ./dvc.yaml:/app/dvc.yaml
-      - ./dvc.lock:/app/dvc.lock
       - ./config.yaml:/app/config.yaml
       - ./src:/app/src
       - ./.git:/app/.git
     working_dir: /app
     depends_on:
       - train_model
+
+  retrieve_data:
+    build:
+      context: .
+      dockerfile: src/retrieve_data/Dockerfile
+      args:
+        <<: *user-info
+    container_name: retrieve_data_service
+    user: root
+    command: >
+      su -c 'python retrieve_data.py' appuser
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./.dvc:/app/.dvc
+      - ./.dvc/config:/app/.dvc/config
+      - ./.dvcignore:/app/.dvcignore
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./config.yaml:/app/config.yaml
+      - ./src:/app/src
+      - ./.git:/app/.git
+    working_dir: /app
 
 volumes:
   postgres_data:
